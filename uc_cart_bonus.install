@@ -1,0 +1,118 @@
+<?php
+
+/**
+ * Implementation of hook_schema().
+ */
+function uc_cart_bonus_schema() {
+
+  $schema['uc_cart_bonus'] = array(
+    'description' => 'Stores information on cart bonus add rules.',
+    'fields' => array(
+      'bid' => array(
+        'description' => 'Primary key: Bonus ID.',
+        'type' => 'serial',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+      ),
+      'rule_name' => array(
+        'description' => 'The name of the bonus.',
+        'type' => 'varchar',
+        'length' => 255,
+        'not null' => TRUE,
+        'default' => '',
+      ),
+      'rule_text' => array(
+        'description' => 'The description of the bonus.',
+        'type' => 'varchar',
+        'length' => 255,
+        'not null' => TRUE,
+        'default' => '',
+      ),
+      'min_required' => array(
+        'description' => 'Minimum products required',
+        'type' => 'int',
+        'not null' => TRUE,
+        'default' => 1,
+      ),
+      'qty' => array(
+        'description' => 'Quantity to add to cart',
+        'type' => 'int',
+        'not null' => TRUE,
+        'default' => 1,
+      ),
+      'cart_node_trigger' => array(
+        'description' => 'Nodes this rule is limited to',
+        'type' => 'text',
+        'serialize' => TRUE,
+        'not null' => FALSE,
+      ),
+      'cart_node_trigger_op' => array(
+        'description' => 'Operation to check with, ANY or ALL',
+        'type' => 'varchar',
+        'length' => 5,
+        'serialize' => FALSE,
+        'default'=> 'ALL',
+      ),
+      'cart_node_add' => array(
+        'description' => 'Nodes to add to the cart',
+        'type' => 'text',
+        'serialize' => TRUE,
+        'not null' => FALSE,
+      ),
+      'cart_node_discount' => array(
+        'description' => 'Discount to add the Node add at, 100% etc',
+        'type' => 'text',
+        'serialize' => TRUE,
+        'not null' => FALSE,
+      ),
+    ),
+    'primary key' => array('bid'),
+
+  );
+
+  $schema['uc_cart_bonus_log'] = array(
+    'description' => 'Stores information about bonuses applied',
+    'fields' => array(
+      'log_id' => array(
+        'description' => 'Primary key: Bonus ID.',
+        'type' => 'serial',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+      ),
+      'bid' => array(
+        'description' => 'Bonus ID',
+        'type' => 'int',
+        'length' => 11,
+      ),
+      'cid' => array(
+        'description' => 'Cart ID',
+        'type' => 'varchar',
+        'length' => 255,
+        'not null' => TRUE,
+        'default' => '',
+      ),
+      'created' => array(
+        'description' => 'Date applied',
+        'type' => 'int',
+        'length' => 11,
+        'not null' => TRUE,
+      ),
+    ),
+    'primary key' => array('log_id'),
+
+  );
+
+
+  return $schema;
+}
+
+function uc_cart_bonus_install() {
+  drupal_install_schema('uc_cart_bonus');
+
+}
+
+function uc_cart_bonus_uninstall() {
+  drupal_uninstall_schema('uc_cart_bonus');
+
+}
+

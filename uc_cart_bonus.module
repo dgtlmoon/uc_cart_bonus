@@ -1,0 +1,315 @@
+<?php
+
+
+/**
+ * @file
+ * Adds items to cart with discounts
+ * Hi Guys
+
+Correct, I would like to set up a “Gift with Purchase” feature that we can use ongoing. It should have the following capabilities
+-          Ability to nominate min items to be purchased to receive gift
+-          Ability to nominate which ‘items’ need to be purchased to receive gift
+-          Ability to nominate different gifts (ie, various items in system)
+-          When in the shopping cart, prompt that pops up to let customer know of the offer
+
+So here are some examples:
+
+If there is an offer Buy any 2 products and receive free oil bottle:
+-          Customer purchases 2 products and they receive 1 bottle oil for free ($0.00 value)
+-          Customer purchases 3 products and they receive 1 bottle
+-          Customer purchases 4 products and they receive 2 bottles
+ *
+ * Uses role based authorization to track affiliate referrals
+ * and affiliate commissions
+ */
+
+/**
+ * Implementation of hook_help().
+ */
+function uc_cart_bonus($path, $arg) {
+  switch ($path) {
+    case 'admin/modules#description':
+      return t('Allows automatic adding of discounted items to the cart based on rules');
+      break;
+    case 'admin/modules/affiliate':
+      return t('Manage Cart Bonuses');
+      break;
+  }
+}
+
+/**
+ * Implementation of hook_menu().
+ */
+function uc_cart_bonus_menu() {
+
+  $access = array('administer store');
+
+  $items['admin/store/settings/cart_bonus'] = array(
+    'title' => 'Cart Bonuses',
+    'description' => 'Manage site affiliates',
+    'page callback' => 'uc_cart_bonus_admin_manage',
+    'access arguments' => $access,
+    'file' => 'uc_cart_bonus.admin.inc',
+    'type' => MENU_NORMAL_ITEM,
+
+  );
+  $items['admin/store/settings/cart_bonus/add'] = array(
+    'title' => 'Add a Cart Bonus rule',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('uc_cart_bonus_form'),
+    'access arguments' => $access,
+    'type' => MENU_LOCAL_TASK,
+    'file' => 'uc_cart_bonus.admin.inc',
+  );
+
+  $items['admin/store/settings/cart_bonus/%/edit'] = array(
+    'title' => 'Edit Cart Bonus rule',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('uc_cart_bonus_form', 3),
+    'access arguments' => $access,
+    'type' => MENU_CALLBACK,
+    'file' => 'uc_cart_bonus.admin.inc',
+  );
+  $items['admin/store/settings/cart_bonus/%/delete'] = array(
+    'title' => 'Delete Bonus rule',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('uc_cart_bonus_delete_form', 3),
+    'access arguments' => $access,
+    'type' => MENU_CALLBACK,
+    'file' => 'uc_cart_bonus.admin.inc',
+  );
+
+  return $items;
+}
+
+/**
+ * Implementation of hook_perm()
+ */
+function uc_cart_bonus_perm() {
+  return array('administer cart bonuses');
+}
+
+
+function uc_cart_bonus_uc_cart_alter(&$items) {
+
+  $matching_rules = array();
+
+  foreach ($items as $item) {
+    if ($rule = _uc_cart_bonus_find_rule($items)) {
+      // group the rules so they dont get multiplied
+      $matching_rules[$rule['bid']] = $rule;
+    }
+  }
+
+  foreach ($matching_rules as $rule) {
+    // Loop through all the items in the cart...
+
+    $bonus = _uc_cart_bonus_get_rule($rule['bid']);
+    foreach ($bonus->cart_node_add as $new_nid) {
+      $thing = new stdClass();
+      $new_node = node_load($new_nid);
+      $thing->nid = $new_node->nid;
+      $thing->qty = $rule['qty'];
+      $thing->title = $new_node->title . "(Bonus/Gift - {$bonus->rule_name})";
+      $thing->changed = time();
+      $thing->data['module'] = 'uc_product';
+      $thing->data['bonus_id'] = $rule['bid'];
+      $thing->data['shippable'] = TRUE;
+      $thing->vid = $new_node->vid;
+      $thing->model = $new_node->model;
+      $thing->module = 'uc_product';
+      $thing->price = $new_node->sell_price - (($new_node->sell_price / 100) * $bonus->cart_node_discount);
+      $items[] = $thing;
+    }
+  }
+
+}
+
+
+function _uc_cart_bonus_get_rule($ruleID) {
+
+  $sql = "SELECT u.* FROM {uc_cart_bonus} u where bid = %d";
+  $result = db_query($sql, $ruleID);
+
+  $bonus = db_fetch_object($result);
+  if (!$bonus) {
+    return FALSE;
+  }
+
+  $bonus->cart_node_add = unserialize($bonus->cart_node_add);
+  $bonus->cart_node_trigger = unserialize($bonus->cart_node_trigger);
+
+  return $bonus;
+}
+
+/**
+ * Find a rule this nid applies for
+ * @param $nid
+ */
+function _uc_cart_bonus_find_rule($in_cart_items) {
+
+  // because this is handed by a reference, do a copy to be sure we dont affect
+  // the actual cart structure
+  $cart_items = array_copy($in_cart_items);
+
+  $sql = "SELECT u.* FROM {uc_cart_bonus} u";
+  $result = db_query($sql);
+  $nids_in_cart = array();
+
+  // rekey the cart_items with their nid
+  foreach ($cart_items as $id => $item) {
+    unset($cart_items[$id]);
+    $cart_items[$item->nid] = $item;
+  }
+
+  $qty_in_cart = 0;
+  foreach ($cart_items as $item) {
+    $nids_in_cart[$item->nid] = $item->nid;
+    $qty_in_cart += $item->qty;
+  }
+
+  // find a rule that is eaten by all the parameters available across the whole cart
+  while ($bonus = db_fetch_object($result)) {
+    $trigger = array_values(unserialize($bonus->cart_node_trigger));
+
+    switch ($bonus->cart_node_trigger_op) {
+      case 'all':
+        if (array_intersect($trigger, $nids_in_cart) == $trigger && $qty_in_cart >= $bonus->min_required) {
+          // work out the quantity, how many times does this rule fit into the quantity of any of the matching nids?
+
+          $matches = array_intersect($trigger, $nids_in_cart);
+          if (count($matches) > 0) {
+            // how many times does this rule fit into this cart? reduce the cart to find out
+            $times = 0;
+            $done = FALSE;
+
+            while (!$done) {
+              $x = 0; // counter
+              foreach ($matches as $match_nid) {
+
+                // remove the required amount
+                if ($cart_items[$match_nid]->qty >= $bonus->min_required) {
+                  // this counts the number of items that got to be reduced by the amount
+                  // if this is the same as the number that we found at the end of this
+                  // then it means all the items checked out
+                  $x++;
+                }
+                $cart_items[$match_nid]->qty -= $bonus->min_required;
+
+                if ($cart_items[$match_nid]->qty < $bonus->min_required) {
+                  unset($nids_in_cart[$match_nid]);
+                }
+              }
+              if ($x == count($matches)) {
+                $times++;
+              }
+              if (!count(array_intersect($matches, $nids_in_cart))) {
+                $done = TRUE;
+              }
+
+            }
+            if ($times > 0) {
+              return array('bid' => $bonus->bid, 'qty' => $times * $bonus->qty);
+            }
+            else {
+              return FALSE;
+            }
+
+
+          }
+        }
+        break;
+      case 'any':
+        $matches = array_intersect($trigger, $nids_in_cart);
+        if (count($matches) > 0) {
+          // how many times does this rule fit into this cart? reduce the cart to find out
+          $times = 0;
+          $done = FALSE;
+
+          while (!$done) {
+            $x = 0; // counter
+            foreach ($matches as $match_nid) {
+
+              // remove the required amount
+              if ($cart_items[$match_nid]->qty >= $bonus->min_required) {
+                // this counts the number of items that got to be reduced by the amount
+                // if this is the same as the number that we found at the end of this
+                // then it means all the items checked out
+                $x++;
+              }
+              $cart_items[$match_nid]->qty -= $bonus->min_required;
+
+              if ($cart_items[$match_nid]->qty < $bonus->min_required) {
+                unset($nids_in_cart[$match_nid]);
+              }
+            }
+            if ($x == count($matches)) {
+              $times++;
+            }
+            if (!count(array_intersect($matches, $nids_in_cart))) {
+              $done = TRUE;
+            }
+
+          }
+          if ($times > 0) {
+            return array('bid' => $bonus->bid, 'qty' => $times * $bonus->qty);
+          }
+          else {
+            return FALSE;
+          }
+
+
+        }
+        break;
+    }
+  }
+
+  return FALSE;
+}
+
+function uc_cart_bonus_cart_form_validate($form, &$form_state) {
+
+  $has_bonus = FALSE;
+  $changed = FALSE;
+
+  foreach ($form_state['values']['items'] as $id => $item) {
+    if (is_array($item)) {
+      // find if this was a bonus_id capable cart
+      $data = unserialize($item['data']);
+      if (isset($data['bonus_id'])) {
+        $has_bonus = TRUE;
+      }
+      // see if this is greater than the original form
+      if (intval($item['qty']) != intval($form['items'][$id]['qty']['#default_value'])) {
+        $changed = TRUE;
+      }
+    }
+  }
+  if ($has_bonus && $changed) {
+    drupal_set_message(t('Sorry, bonus items may not be changed'));
+  }
+}
+
+function uc_cart_bonus_form_alter(&$form, $form_state, $form_id) {
+  if ($form_id == 'uc_cart_view_form') {
+    $form['#validate'][] = 'uc_cart_bonus_cart_form_validate';
+  }
+}
+
+function array_copy($source) {
+  $arr = array();
+
+  foreach ($source as $element) {
+    if (is_array($element)) {
+      $arr[] = array_copy($element);
+    }
+    elseif (is_object($element)) {
+      // make an object copy
+      $arr[] = clone $element;
+    }
+    else {
+      $arr[] = $element;
+    }
+  }
+  return $arr;
+}
