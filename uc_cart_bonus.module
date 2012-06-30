@@ -50,9 +50,16 @@ function uc_cart_bonus_menu() {
     'page callback' => 'uc_cart_bonus_admin_manage',
     'access arguments' => $access,
     'file' => 'uc_cart_bonus.admin.inc',
-    'type' => MENU_NORMAL_ITEM,
-
   );
+  $items['admin/store/settings/cart_bonus/overview'] = array(
+    'title' => 'Cart Bonuses',
+    'description' => 'Manage site affiliates',
+    'page callback' => 'uc_cart_bonus_admin_manage',
+    'access arguments' => $access,
+    'type' => MENU_DEFAULT_LOCAL_TASK,
+    'file' => 'uc_cart_bonus.admin.inc',
+  );
+
   $items['admin/store/settings/cart_bonus/add'] = array(
     'title' => 'Add a Cart Bonus rule',
     'page callback' => 'drupal_get_form',
