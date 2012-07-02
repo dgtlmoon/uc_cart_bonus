@@ -72,7 +72,7 @@ function uc_cart_bonus_menu() {
   $items['admin/store/settings/cart_bonus/%/edit'] = array(
     'title' => 'Edit Cart Bonus rule',
     'page callback' => 'drupal_get_form',
-    'page arguments' => array('uc_cart_bonus_form', 3),
+    'page arguments' => array('uc_cart_bonus_form', 4),
     'access arguments' => $access,
     'type' => MENU_CALLBACK,
     'file' => 'uc_cart_bonus.admin.inc',
@@ -80,7 +80,7 @@ function uc_cart_bonus_menu() {
   $items['admin/store/settings/cart_bonus/%/delete'] = array(
     'title' => 'Delete Bonus rule',
     'page callback' => 'drupal_get_form',
-    'page arguments' => array('uc_cart_bonus_delete_form', 3),
+    'page arguments' => array('uc_cart_bonus_delete_form', 4),
     'access arguments' => $access,
     'type' => MENU_CALLBACK,
     'file' => 'uc_cart_bonus.admin.inc',

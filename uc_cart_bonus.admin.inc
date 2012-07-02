@@ -207,7 +207,7 @@ function uc_cart_bonus_form_submit($form, &$form_state) {
   }
 
   drupal_set_message('Cart Bonus rule updated');
-  drupal_goto('admin/store/cart_bonus');
+  drupal_goto('admin/store/settings/cart_bonus');
 }
 
 function uc_cart_bonus_delete_form($form_state, $attribute = NULL) {
@@ -225,7 +225,7 @@ function uc_cart_bonus_delete_form($form_state, $attribute = NULL) {
 
   $form = confirm_form(
     $form, t('Delete cart bonus rule: %name', array('%name' => $attribute->rule_name)),
-    'admin/store/cart_bonus',
+    'admin/store/settings/cart_bonus',
     t('Deleting will permently remove it from the system'),
     t('Delete Cart Bonus configuration'), t('Cancel')
   );
@@ -242,5 +242,5 @@ function uc_cart_bonus_delete_form_submit($form, &$form_state) {
   }
 
   drupal_set_message('Cart Bonus rule deleted');
-  drupal_goto('admin/store/cart_bonus');
+  drupal_goto('admin/store/settings/cart_bonus');
 }
