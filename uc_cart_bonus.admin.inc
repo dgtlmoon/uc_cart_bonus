@@ -233,14 +233,12 @@ function uc_cart_bonus_delete_form($form_state, $attribute = NULL) {
 }
 
 
-
-
 function uc_cart_bonus_delete_form_submit($form, &$form_state) {
 
   if (isset($form_state['values']['bid'])) {
     db_query("DELETE FROM {uc_cart_bonus} where bid = %d", $form_state['values']['bid']);
+    drupal_set_message('Cart Bonus rule deleted');
   }
 
-  drupal_set_message('Cart Bonus rule deleted');
   drupal_goto('admin/store/settings/cart_bonus');
 }

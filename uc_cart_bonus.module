@@ -159,7 +159,7 @@ function _uc_cart_bonus_find_rule($in_cart_items) {
   // the actual cart structure
   $cart_items = array_copy($in_cart_items);
 
-  $sql = "SELECT u.* FROM {uc_cart_bonus} u";
+  $sql = "SELECT u.* FROM {uc_cart_bonus} u ORDER BY u.min_required DESC";
   $result = db_query($sql);
   $nids_in_cart = array();
 
