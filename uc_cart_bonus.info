@@ -1,6 +1,1 @@
-name = Ubercart Cart Bonus
-description = Automatically adds items to a cart based on a rule
-dependencies[] = uc_store
-dependencies[] = uc_order
-package = Ubercart - extra
-core = 6.x
+name = Ubercart cart bonus
