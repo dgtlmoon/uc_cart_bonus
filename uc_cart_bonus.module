@@ -19,14 +19,12 @@ If there is an offer Buy any 2 products and receive free oil bottle:
 -          Customer purchases 3 products and they receive 1 bottle
 -          Customer purchases 4 products and they receive 2 bottles
  *
- * Uses role based authorization to track affiliate referrals
- * and affiliate commissions
  */
 
 /**
  * Implementation of hook_help().
  */
-function uc_cart_bonus($path, $arg) {
+function uc_cart_bonus_help($path, $arg) {
   switch ($path) {
     case 'admin/modules#description':
       return t('Allows automatic adding of discounted items to the cart based on rules');
